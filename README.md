@@ -29,17 +29,23 @@ out/      results (gitignored, created at run time)
 * **JDK 25** (the benchmark classes are class file version 69, and the FFM API requires a recent JDK).
 * Nothing else: the JMH harness is prebuilt and the JMH runtime jars are committed.
 
-## Run locally (Windows PowerShell)
+## Run locally (Windows)
+
+`run-local.bat` (cmd, self-contained; needs JDK 25 on PATH):
+
+```bat
+run-local.bat                                                      :: all 2030 benchmarks
+run-local.bat ".*DowncallJniBench\.(jni|ffm)_BP$" 2 100ms 2 200ms 1  :: quick smoke test
+```
+
+Args: `[filter] [warmupIterations] [warmupTime] [measurementIterations] [measurementTime] [forks]`.
+If a filter contains `|`, quote it in cmd: `run-local.bat ".*(jni|ffm)_BP$"`.
+
+`run-local.ps1` (PowerShell) is the same thing:
 
 ```powershell
-# all 2030 benchmarks, ~3h
 ./run-local.ps1
-
-# one signature
 ./run-local.ps1 -Filter '.*DowncallJniBench\.(jni|ffm)_BP$'
-
-# only the FFM side
-./run-local.ps1 -Filter '.*ffm_.*'
 ```
 
 ## Run locally (bash)
