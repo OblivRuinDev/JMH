@@ -99,7 +99,7 @@ jobs:
           - { os: ubuntu-24.04-arm, platform: linux,   arch: arm64, jar: fjgl-0.3.0-natives-linux-arm64.jar,   sep: ':', distribution: temurin }
           - { os: windows-latest,   platform: windows, arch: x64,   jar: fjgl-0.3.0-natives-windows.jar,       sep: ';', distribution: temurin }
           - { os: windows-11-arm,   platform: windows, arch: arm64, jar: fjgl-0.3.0-natives-windows-arm64.jar, sep: ';', distribution: microsoft }
-          - { os: macos-13,         platform: macos,   arch: x64,   jar: fjgl-0.3.0-natives-macos.jar,         sep: ':', distribution: temurin }
+          - { os: macos-15-intel,   platform: macos,   arch: x64,   jar: fjgl-0.3.0-natives-macos.jar,         sep: ':', distribution: temurin }
           - { os: macos-14,         platform: macos,   arch: arm64, jar: fjgl-0.3.0-natives-macos-arm64.jar,   sep: ':', distribution: temurin }
     steps:
       - uses: actions/checkout@v4

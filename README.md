@@ -78,7 +78,7 @@ java -cp tools/classes Flatten out/env-linux-x64.json out/jmh-linux-x64.json out
 | `ubuntu-24.04-arm` | linux | arm64 |
 | `windows-latest` | windows | x64 |
 | `windows-11-arm` | windows | arm64 |
-| `macos-13` | macos | x64 |
+| `macos-15-intel` | macos | x64 |
 | `macos-14` | macos | arm64 |
 
 Each job uploads `env-*.json`, `jmh-*.json` and `results-*.csv`; the `merge` job concatenates all
