@@ -84,7 +84,7 @@ java -cp tools/classes Flatten out/env-linux-x64.json out/jmh-linux-x64.json out
 Each job uploads `env-*.json`, `jmh-*.json` and `results-*.csv`; the `merge` job concatenates all
 CSVs into `results-all.csv`. Only GitHub-hosted machines are used (no QEMU), so timings are real.
 
-> GitHub-hosted jobs are hard-capped at **6 hours**. The defaults collect **50 raw samples** per
+> GitHub-hosted jobs are hard-capped at **6 hours**. The defaults collect **50 samples** per
 > benchmark (`50 measurement iterations × 1 fork`) and finish in roughly 5h per platform. To get more
 > samples or multiple forks inside the cap, split the 2030 benchmarks across several runs with
 > `filter` (e.g. `.*_(jni|ffm)_V.*`, `.*_(jni|ffm)_P.*`, …) and combine the CSVs afterwards.
@@ -100,9 +100,10 @@ CSVs into `results-all.csv`. Only GitHub-hosted machines are used (no QEMU), so 
   `platform, arch, osName, osVersion, jdk, vmName, cpuModel, ramBytes, backend, signature, ret,
   params, score, error, unit, p0, p25, p50, p75, p90, p95, p99, p99_9, p99_99, p100, forks,
   warmupIterations, measurementIterations, threads, timestamp`.
-* `calls-<platform>-<arch>.csv` — every raw measurement sample, one row per benchmark:
-  `method, v0, v1, …` (`method` is the short name, `jni_<cType>` or `ffm_<cType>`; `vN` are the
-  measurement-iteration values).
+* `calls-<platform>-<arch>.csv` — the raw per-measurement samples, one row per benchmark:
+  `method, v0, v1, …`. Each `vN` is the **ns/op of one measurement iteration**, i.e. the average
+  time of a *single call* measured over that ~100ms iteration (millions of calls). Import it into a
+  spreadsheet to compute mean / σ / CV per method. Mode is `AverageTime` (`-bm avgt`).
 
 In a spreadsheet, pivot `signature` with `backend` as columns and `score` as values to get
 `ffm / jni` ratios per signature. `signature` is the `cType`: first letter is the return type,

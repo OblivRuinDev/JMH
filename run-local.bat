@@ -54,6 +54,7 @@ java %JVMFLAGS% -cp "%MAINJAR%;%NATIVE%;libs\*" org.openjdk.jmh.Main ^
   -r %MT% ^
   -f %FK% ^
   -t 1 ^
+  -bm avgt ^
   -tu ns ^
   -rf json ^
   -rff "out\jmh-windows-x64.json" ^

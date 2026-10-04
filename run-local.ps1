@@ -55,7 +55,7 @@ Write-Host ">> environment"
 
 Write-Host ">> JMH ($tag)"
 & java @jvmFlags -cp $cp org.openjdk.jmh.Main $Filter `
-    -wi $Warmup -w $WarmupTime -i $Iterations -r $MeasurementTime -f $Forks -t $Threads -tu ns `
+    -wi $Warmup -w $WarmupTime -i $Iterations -r $MeasurementTime -f $Forks -t $Threads -bm avgt -tu ns `
     -rf json -rff "out/jmh-$tag.json" `
     -jvmArgsAppend $jvmFlagsStr
 if ($LASTEXITCODE -ne 0) { throw 'JMH failed' }

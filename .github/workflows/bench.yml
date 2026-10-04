@@ -170,6 +170,7 @@ jobs:
             -r "$MT" \
             -f "$FK" \
             -t "$TH" \
+            -bm avgt \
             -tu ns \
             -rf json \
             -rff "out/jmh-${{ matrix.platform }}-${{ matrix.arch }}.json" \
