@@ -9,8 +9,8 @@ param(
     [string]$Filter = '.*DowncallJniBench.*',
     [string]$Warmup = '30',
     [string]$WarmupTime = '100ms',
-    [string]$Iterations = '5',
-    [string]$MeasurementTime = '500ms',
+    [string]$Iterations = '50',
+    [string]$MeasurementTime = '100ms',
     [string]$Forks = '1',
     [string]$Threads = '1'
 )

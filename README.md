@@ -61,7 +61,7 @@ java --enable-native-access=ALL-UNNAMED \
   --add-exports=java.base/jdk.internal.util=ALL-UNNAMED \
   -cp "dist/fjgl-0.3.0.jar:dist/fjgl-0.3.0-natives-linux.jar:libs/*" \
   org.openjdk.jmh.Main '.*DowncallJniBench.*' \
-  -wi 30 -i 5 -w 100ms -r 500ms -f 1 -t 1 -tu ns \
+  -wi 30 -i 50 -w 100ms -r 100ms -f 1 -t 1 -tu ns \
   -rf json -rff out/jmh-linux-x64.json \
   -jvmArgsAppend "--enable-native-access=ALL-UNNAMED --add-exports=java.base/jdk.internal.misc=ALL-UNNAMED --add-exports=java.base/jdk.internal.access=ALL-UNNAMED --add-exports=java.base/jdk.internal.foreign=ALL-UNNAMED --add-exports=java.base/jdk.internal.util=ALL-UNNAMED"
 
@@ -84,8 +84,10 @@ java -cp tools/classes Flatten out/env-linux-x64.json out/jmh-linux-x64.json out
 Each job uploads `env-*.json`, `jmh-*.json` and `results-*.csv`; the `merge` job concatenates all
 CSVs into `results-all.csv`. Only GitHub-hosted machines are used (no QEMU), so timings are real.
 
-> GitHub-hosted jobs are hard-capped at **6 hours**. Defaults finish in ~3h per platform. Raising
-> iterations/forks too far may exceed that; split with a narrower `filter` instead.
+> GitHub-hosted jobs are hard-capped at **6 hours**. The defaults collect **50 raw samples** per
+> benchmark (`50 measurement iterations × 1 fork`) and finish in roughly 5h per platform. To get more
+> samples or multiple forks inside the cap, split the 2030 benchmarks across several runs with
+> `filter` (e.g. `.*_(jni|ffm)_V.*`, `.*_(jni|ffm)_P.*`, …) and combine the CSVs afterwards.
 
 ## Data format
 

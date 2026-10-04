@@ -4,9 +4,10 @@ name: jni-vs-ffm-bench
 # JMH harness) against the platform native jar, collects the machine environment and uploads the
 # result files.
 #
-# Note: GitHub-hosted jobs are hard-capped at 6 hours. With the defaults below a full run of all
-# 2030 benchmarks takes roughly 3-4 hours per platform, so it fits. If you raise the iteration count
-# or forks, split the run by passing a narrower "filter" (e.g. only 0-1 parameter signatures).
+# Note: GitHub-hosted jobs are hard-capped at 6 hours. With the defaults below (30x100ms warmup,
+# 50x100ms measurement, 1 fork => 50 raw samples per benchmark) a full run of all 2030 benchmarks
+# takes roughly 5 hours per platform. To collect more samples or use multiple forks, split the run
+# by passing a narrower "filter" and run the workflow several times.
 
 on:
   # Manual run: Actions -> jni-vs-ffm-bench -> Run workflow. The inputs here override the defaults.
@@ -27,11 +28,11 @@ on:
       measurementIterations:
         description: Measurement iterations
         required: false
-        default: '5'
+        default: '50'
       measurementTime:
         description: Measurement time per iteration
         required: false
-        default: '500ms'
+        default: '100ms'
       forks:
         description: Forks
         required: false
@@ -72,8 +73,8 @@ env:
   DEF_FILTER: '.*DowncallJniBench.*'
   DEF_WARMUP_ITERATIONS: '30'
   DEF_WARMUP_TIME: '100ms'
-  DEF_MEASUREMENT_ITERATIONS: '5'
-  DEF_MEASUREMENT_TIME: '500ms'
+  DEF_MEASUREMENT_ITERATIONS: '50'
+  DEF_MEASUREMENT_TIME: '100ms'
   DEF_FORKS: '1'
   DEF_THREADS: '1'
   DEF_JVM_ARGS: >-
