@@ -93,18 +93,19 @@ jobs:
       matrix:
         include:
           # Native jar name must match a file committed under dist/
-          - { os: ubuntu-latest,    platform: linux,   arch: x64,   native: fjgl-0.3.0-natives-linux.jar,         sep: ':' }
-          - { os: ubuntu-24.04-arm, platform: linux,   arch: arm64, native: fjgl-0.3.0-natives-linux-arm64.jar,   sep: ':' }
-          - { os: windows-latest,   platform: windows, arch: x64,   native: fjgl-0.3.0-natives-windows.jar,       sep: ';' }
-          - { os: windows-11-arm,   platform: windows, arch: arm64, native: fjgl-0.3.0-natives-windows-arm64.jar, sep: ';' }
-          - { os: macos-13,         platform: macos,   arch: x64,   native: fjgl-0.3.0-natives-macos.jar,         sep: ':' }
-          - { os: macos-14,         platform: macos,   arch: arm64, native: fjgl-0.3.0-natives-macos-arm64.jar,   sep: ':' }
+          # Temurin has no JDK 25 for Windows arm64, so that one uses the Microsoft build.
+          - { os: ubuntu-latest,    platform: linux,   arch: x64,   jar: fjgl-0.3.0-natives-linux.jar,         sep: ':', distribution: temurin }
+          - { os: ubuntu-24.04-arm, platform: linux,   arch: arm64, jar: fjgl-0.3.0-natives-linux-arm64.jar,   sep: ':', distribution: temurin }
+          - { os: windows-latest,   platform: windows, arch: x64,   jar: fjgl-0.3.0-natives-windows.jar,       sep: ';', distribution: temurin }
+          - { os: windows-11-arm,   platform: windows, arch: arm64, jar: fjgl-0.3.0-natives-windows-arm64.jar, sep: ';', distribution: microsoft }
+          - { os: macos-13,         platform: macos,   arch: x64,   jar: fjgl-0.3.0-natives-macos.jar,         sep: ':', distribution: temurin }
+          - { os: macos-14,         platform: macos,   arch: arm64, jar: fjgl-0.3.0-natives-macos-arm64.jar,   sep: ':', distribution: temurin }
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v5
         with:
-          distribution: temurin
+          distribution: ${{ matrix.distribution }}
           java-version: '25'
 
       - name: Compile tools
@@ -152,7 +153,7 @@ jobs:
           TH="${IN_THREADS:-$DEF_THREADS}"
           JVM="${IN_JVM_ARGS:-$DEF_JVM_ARGS}"
 
-          CP="dist/fjgl-0.3.0.jar${SEP}dist/${{ matrix.native }}${SEP}libs/*"
+          CP="dist/fjgl-0.3.0.jar${SEP}dist/${{ matrix.jar }}${SEP}libs/*"
           echo "classpath:        $CP"
           echo "filter:           $FILTER"
           echo "warmup:           $WI x $WT"
