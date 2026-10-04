@@ -82,7 +82,7 @@ public final class Flatten {
                 }
             }
             maxValues = Math.max(maxValues, values.size());
-            callsMethods.add(benchmark);
+            callsMethods.add(simple);
             callsValues.add(values);
 
             var row = new ArrayList<String>(HEADER.length);
