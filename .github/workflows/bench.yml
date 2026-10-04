@@ -1,0 +1,156 @@
+name: jni-vs-ffm-bench
+
+# All JMH interactions are driven from this workflow. Every job runs the prebuilt
+# dist/fjgl-0.3.0.jar (which already contains DowncallJniBench and its JMH harness) against the
+# platform native jar, collects the machine environment and uploads a JSON result file.
+#
+# Note: GitHub-hosted jobs are hard-capped at 6 hours. With the defaults below a full run of all
+# 2030 benchmarks takes roughly 3 hours per platform, so it fits. If you raise the iteration count
+# or forks, split the run by passing a narrower "filter" (e.g. only 0-1 parameter signatures).
+
+on:
+  workflow_dispatch:
+    inputs:
+      filter:
+        description: JMH benchmark regex
+        required: false
+        default: '.*DowncallJniBench.*'
+      warmupIterations:
+        description: Warmup iterations
+        required: false
+        default: '3'
+      measurementIterations:
+        description: Measurement iterations
+        required: false
+        default: '5'
+      iterationTime:
+        description: Warmup/measurement time per iteration
+        required: false
+        default: '500ms'
+      forks:
+        description: Forks
+        required: false
+        default: '1'
+      threads:
+        description: Threads
+        required: false
+        default: '1'
+      jvmArgs:
+        description: JVM arguments forwarded to the driver and to every fork
+        required: false
+        default: >-
+          --enable-native-access=ALL-UNNAMED
+          --add-exports=java.base/jdk.internal.access=ALL-UNNAMED
+          --add-exports=java.base/jdk.internal.foreign=ALL-UNNAMED
+          --add-exports=java.base/jdk.internal.misc=ALL-UNNAMED
+          --add-exports=java.base/jdk.internal.util=ALL-UNNAMED
+
+permissions:
+  contents: read
+
+jobs:
+  bench:
+    name: ${{ matrix.platform }}-${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 350
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Native jar name must match a file committed under dist/
+          - { os: ubuntu-latest,    platform: linux,   arch: x64,   native: fjgl-0.3.0-natives-linux.jar,         sep: ':' }
+          - { os: ubuntu-24.04-arm, platform: linux,   arch: arm64, native: fjgl-0.3.0-natives-linux-arm64.jar,   sep: ':' }
+          - { os: windows-latest,   platform: windows, arch: x64,   native: fjgl-0.3.0-natives-windows.jar,       sep: ';' }
+          - { os: windows-11-arm,   platform: windows, arch: arm64, native: fjgl-0.3.0-natives-windows-arm64.jar, sep: ';' }
+          - { os: macos-13,         platform: macos,   arch: x64,   native: fjgl-0.3.0-natives-macos.jar,         sep: ':' }
+          - { os: macos-14,         platform: macos,   arch: arm64, native: fjgl-0.3.0-natives-macos-arm64.jar,   sep: ':' }
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Compile tools
+        shell: bash
+        run: javac -d tools/classes tools/EnvInfo.java tools/Flatten.java
+
+      - name: Collect environment
+        shell: bash
+        run: |
+          mkdir -p out
+          java -cp tools/classes EnvInfo "out/env-${{ matrix.platform }}-${{ matrix.arch }}.json"
+
+      - name: Run JMH
+        shell: bash
+        env:
+          SEP: ${{ matrix.sep }}
+        run: |
+          CP="dist/fjgl-0.3.0.jar${SEP}dist/${{ matrix.native }}${SEP}libs/*"
+          echo "classpath: $CP"
+          java ${{ inputs.jvmArgs }} -cp "$CP" org.openjdk.jmh.Main \
+            '${{ inputs.filter }}' \
+            -wi ${{ inputs.warmupIterations }} \
+            -i ${{ inputs.measurementIterations }} \
+            -w ${{ inputs.iterationTime }} \
+            -r ${{ inputs.iterationTime }} \
+            -f ${{ inputs.forks }} \
+            -t ${{ inputs.threads }} \
+            -tu ns \
+            -rf json \
+            -rff "out/jmh-${{ matrix.platform }}-${{ matrix.arch }}.json" \
+            -jvmArgsAppend "${{ inputs.jvmArgs }}"
+
+      - name: Flatten to CSV
+        if: always()
+        shell: bash
+        run: |
+          if [ -f "out/jmh-${{ matrix.platform }}-${{ matrix.arch }}.json" ]; then
+            java -cp tools/classes Flatten \
+              "out/env-${{ matrix.platform }}-${{ matrix.arch }}.json" \
+              "out/jmh-${{ matrix.platform }}-${{ matrix.arch }}.json" \
+              "out/results-${{ matrix.platform }}-${{ matrix.arch }}.csv"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: results-${{ matrix.platform }}-${{ matrix.arch }}
+          path: out/
+          if-no-files-found: warn
+
+  merge:
+    name: merge
+    needs: bench
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        continue-on-error: true
+        with:
+          path: artifacts
+
+      - name: Merge CSVs
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p merged
+          find artifacts -name 'results-*.csv' -exec cp {} merged/ \; 2>/dev/null || true
+          ls -la merged || true
+          shopt -s nullglob
+          files=(merged/results-*.csv)
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "no result CSVs found"
+            exit 0
+          fi
+          head -1 "${files[0]}" > results-all.csv
+          for f in "${files[@]}"; do tail -n +2 "$f" >> results-all.csv; done
+          wc -l results-all.csv
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: results-all
+          path: results-all.csv
+          if-no-files-found: warn
