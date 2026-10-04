@@ -93,7 +93,8 @@ CSVs into `results-all.csv`. Only GitHub-hosted machines are used (no QEMU), so 
   params, score, error, unit, p0, p25, p50, p75, p90, p95, p99, p99_9, p99_99, p100, forks,
   warmupIterations, measurementIterations, threads, timestamp`.
 * `calls-<platform>-<arch>.csv` — every raw measurement sample, one row per benchmark:
-  `method, v0, v1, …` (`method` is the full JMH name, `vN` are the measurement-iteration values).
+  `method, v0, v1, …` (`method` is the short name, `jni_<cType>` or `ffm_<cType>`; `vN` are the
+  measurement-iteration values).
 
 In a spreadsheet, pivot `signature` with `backend` as columns and `score` as values to get
 `ffm / jni` ratios per signature. `signature` is the `cType`: first letter is the return type,
