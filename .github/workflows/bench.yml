@@ -18,13 +18,17 @@ on:
       warmupIterations:
         description: Warmup iterations
         required: false
-        default: '3'
+        default: '30'
+      warmupTime:
+        description: Warmup time per iteration
+        required: false
+        default: '100ms'
       measurementIterations:
         description: Measurement iterations
         required: false
         default: '5'
-      iterationTime:
-        description: Warmup/measurement time per iteration
+      measurementTime:
+        description: Measurement time per iteration
         required: false
         default: '500ms'
       forks:
@@ -93,8 +97,8 @@ jobs:
             '${{ inputs.filter }}' \
             -wi ${{ inputs.warmupIterations }} \
             -i ${{ inputs.measurementIterations }} \
-            -w ${{ inputs.iterationTime }} \
-            -r ${{ inputs.iterationTime }} \
+            -w ${{ inputs.warmupTime }} \
+            -r ${{ inputs.measurementTime }} \
             -f ${{ inputs.forks }} \
             -t ${{ inputs.threads }} \
             -tu ns \

@@ -55,7 +55,7 @@ java --enable-native-access=ALL-UNNAMED \
   --add-exports=java.base/jdk.internal.util=ALL-UNNAMED \
   -cp "dist/fjgl-0.3.0.jar:dist/fjgl-0.3.0-natives-linux.jar:libs/*" \
   org.openjdk.jmh.Main '.*DowncallJniBench.*' \
-  -wi 3 -i 5 -w 500ms -r 500ms -f 1 -t 1 -tu ns \
+  -wi 30 -i 5 -w 100ms -r 500ms -f 1 -t 1 -tu ns \
   -rf json -rff out/jmh-linux-x64.json \
   -jvmArgsAppend "--enable-native-access=ALL-UNNAMED --add-exports=java.base/jdk.internal.misc=ALL-UNNAMED --add-exports=java.base/jdk.internal.access=ALL-UNNAMED --add-exports=java.base/jdk.internal.foreign=ALL-UNNAMED --add-exports=java.base/jdk.internal.util=ALL-UNNAMED"
 

@@ -7,9 +7,10 @@
 # Requires JDK 25 on PATH. Results are written to out/.
 param(
     [string]$Filter = '.*DowncallJniBench.*',
-    [string]$Warmup = '3',
+    [string]$Warmup = '30',
+    [string]$WarmupTime = '100ms',
     [string]$Iterations = '5',
-    [string]$Time = '500ms',
+    [string]$MeasurementTime = '500ms',
     [string]$Forks = '1',
     [string]$Threads = '1'
 )
@@ -54,7 +55,7 @@ Write-Host ">> environment"
 
 Write-Host ">> JMH ($tag)"
 & java @jvmFlags -cp $cp org.openjdk.jmh.Main $Filter `
-    -wi $Warmup -i $Iterations -w $Time -r $Time -f $Forks -t $Threads -tu ns `
+    -wi $Warmup -w $WarmupTime -i $Iterations -r $MeasurementTime -f $Forks -t $Threads -tu ns `
     -rf json -rff "out/jmh-$tag.json" `
     -jvmArgsAppend $jvmFlagsStr
 if ($LASTEXITCODE -ne 0) { throw 'JMH failed' }
