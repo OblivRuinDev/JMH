@@ -1,3 +1,4 @@
+import java.lang.foreign.Linker;
 import java.lang.management.ManagementFactory;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -35,6 +36,7 @@ public final class EnvInfo {
         m.put("availableProcessors", String.valueOf(Runtime.getRuntime().availableProcessors()));
         m.put("cpuModel", cpuModel());
         m.put("ramBytes", String.valueOf(totalMemory()));
+        m.put("linkerClass", linkerClass());
 
         if (out.getParent() != null) {
             Files.createDirectories(out.getParent());
@@ -81,8 +83,15 @@ public final class EnvInfo {
         }
     }
 
-    private static String cpuModel() {
-        String lower = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
+    private static String linkerClass() {
+        try {
+            return Linker.nativeLinker().getClass().getName();
+        } catch (Throwable t) {
+            return "unknown";
+        }
+    }
+
+    private static String cpuModel() {        String lower = System.getProperty("os.name", "").toLowerCase(Locale.ROOT);
         try {
             if (lower.contains("win")) {
                 String v = exec("powershell", "-NoProfile", "-Command", "(Get-CimInstance Win32_Processor).Name");

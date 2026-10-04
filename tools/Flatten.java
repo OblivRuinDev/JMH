@@ -33,6 +33,7 @@ public final class Flatten {
         Path envFile = Path.of(args[0]);
         Path jmhFile = Path.of(args[1]);
         Path outFile = Path.of(args[2]);
+        Path callsFile = args.length > 3 ? Path.of(args[3]) : null;
 
         Map<String, Object> env = (Map<String, Object>)Json.parse(Files.readString(envFile, StandardCharsets.UTF_8));
         List<Object> results = (List<Object>)Json.parse(Files.readString(jmhFile, StandardCharsets.UTF_8));
@@ -50,6 +51,11 @@ public final class Flatten {
         var sb = new StringBuilder(1 << 20);
         sb.append(String.join(",", HEADER)).append('\n');
 
+        // Raw per-measurement values, one row per benchmark: <method>,<v0>,<v1>,...
+        var callsMethods = new ArrayList<String>();
+        var callsValues = new ArrayList<List<String>>();
+        int maxValues = 0;
+
         for (Object o : results) {
             Map<String, Object> r = (Map<String, Object>)o;
 
@@ -63,6 +69,21 @@ public final class Flatten {
 
             Map<String, Object> pm = (Map<String, Object>)r.get("primaryMetric");
             Map<String, Object> pct = (Map<String, Object>)pm.get("scorePercentiles");
+
+            var raw = (List<Object>)pm.get("rawData");
+            var values = new ArrayList<String>();
+            if (raw != null) {
+                for (Object item : raw) {
+                    if (item instanceof List<?> batch) {
+                        for (Object v : batch) values.add(trim(((Number)v).doubleValue()));
+                    } else if (item instanceof Number n) {
+                        values.add(trim(n.doubleValue()));
+                    }
+                }
+            }
+            maxValues = Math.max(maxValues, values.size());
+            callsMethods.add(benchmark);
+            callsValues.add(values);
 
             var row = new ArrayList<String>(HEADER.length);
             row.add(platform);
@@ -100,6 +121,22 @@ public final class Flatten {
             Files.createDirectories(outFile.getParent());
         }
         Files.writeString(outFile, sb.toString(), StandardCharsets.UTF_8);
+
+        if (callsFile != null) {
+            var cb = new StringBuilder(1 << 20);
+            cb.append("method");
+            for (int i = 0; i < maxValues; i++) cb.append(",v").append(i);
+            cb.append('\n');
+            for (int i = 0; i < callsMethods.size(); i++) {
+                cb.append(csv(callsMethods.get(i)));
+                for (String v : callsValues.get(i)) cb.append(',').append(v);
+                cb.append('\n');
+            }
+            if (callsFile.getParent() != null) {
+                Files.createDirectories(callsFile.getParent());
+            }
+            Files.writeString(callsFile, cb.toString(), StandardCharsets.UTF_8);
+        }
     }
 
     private static String normalizeArch(String arch) {

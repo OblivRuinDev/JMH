@@ -61,6 +61,6 @@ Write-Host ">> JMH ($tag)"
 if ($LASTEXITCODE -ne 0) { throw 'JMH failed' }
 
 Write-Host ">> flatten"
-& java -cp tools/classes Flatten "out/env-$tag.json" "out/jmh-$tag.json" "out/results-$tag.csv"
+& java -cp tools/classes Flatten "out/env-$tag.json" "out/jmh-$tag.json" "out/results-$tag.csv" "out/calls-$tag.csv"
 
 Write-Host "done: out/results-$tag.csv"

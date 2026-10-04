@@ -86,6 +86,19 @@ jobs:
           mkdir -p out
           java -cp tools/classes EnvInfo "out/env-${{ matrix.platform }}-${{ matrix.arch }}.json"
 
+      - name: Print environment
+        shell: bash
+        run: |
+          ENV="out/env-${{ matrix.platform }}-${{ matrix.arch }}.json"
+          echo "--- $ENV ---"
+          cat "$ENV"
+          {
+            echo "### Environment ${{ matrix.platform }}-${{ matrix.arch }}"
+            echo '```json'
+            cat "$ENV"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Run JMH
         shell: bash
         env:
@@ -114,7 +127,8 @@ jobs:
             java -cp tools/classes Flatten \
               "out/env-${{ matrix.platform }}-${{ matrix.arch }}.json" \
               "out/jmh-${{ matrix.platform }}-${{ matrix.arch }}.json" \
-              "out/results-${{ matrix.platform }}-${{ matrix.arch }}.csv"
+              "out/results-${{ matrix.platform }}-${{ matrix.arch }}.csv" \
+              "out/calls-${{ matrix.platform }}-${{ matrix.arch }}.csv"
           fi
 
       - uses: actions/upload-artifact@v4

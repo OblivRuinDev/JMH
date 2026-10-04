@@ -59,7 +59,7 @@ java --enable-native-access=ALL-UNNAMED \
   -rf json -rff out/jmh-linux-x64.json \
   -jvmArgsAppend "--enable-native-access=ALL-UNNAMED --add-exports=java.base/jdk.internal.misc=ALL-UNNAMED --add-exports=java.base/jdk.internal.access=ALL-UNNAMED --add-exports=java.base/jdk.internal.foreign=ALL-UNNAMED --add-exports=java.base/jdk.internal.util=ALL-UNNAMED"
 
-java -cp tools/classes Flatten out/env-linux-x64.json out/jmh-linux-x64.json out/results-linux-x64.csv
+java -cp tools/classes Flatten out/env-linux-x64.json out/jmh-linux-x64.json out/results-linux-x64.csv out/calls-linux-x64.csv
 ```
 
 ## Run on GitHub Actions
@@ -83,13 +83,17 @@ CSVs into `results-all.csv`. Only GitHub-hosted machines are used (no QEMU), so 
 
 ## Data format
 
-* `env-<platform>-<arch>.json` — machine/OS/JDK/CPU/RAM.
+* `env-<platform>-<arch>.json` — machine/OS/JDK/CPU/RAM plus the `nativeLinker` class
+  (`linkerClass`, e.g. `jdk.internal.foreign.abi.x64.windows.Windowsx64Linker`). It is uploaded as an
+  artifact **and** printed to the job log / run summary.
 * `jmh-<platform>-<arch>.json` — native JMH output (score, error, percentiles, **per-iteration
   rawData**, forks, jvmArgs, …).
 * `results-<platform>-<arch>.csv` — tidy one-row-per-benchmark CSV derived from both, columns:
   `platform, arch, osName, osVersion, jdk, vmName, cpuModel, ramBytes, backend, signature, ret,
   params, score, error, unit, p0, p25, p50, p75, p90, p95, p99, p99_9, p99_99, p100, forks,
   warmupIterations, measurementIterations, threads, timestamp`.
+* `calls-<platform>-<arch>.csv` — every raw measurement sample, one row per benchmark:
+  `method, v0, v1, …` (`method` is the full JMH name, `vN` are the measurement-iteration values).
 
 In a spreadsheet, pivot `signature` with `backend` as columns and `score` as values to get
 `ffm / jni` ratios per signature. `signature` is the `cType`: first letter is the return type,
