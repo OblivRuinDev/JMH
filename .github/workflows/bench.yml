@@ -1,14 +1,15 @@
 name: jni-vs-ffm-bench
 
-# All JMH interactions are driven from this workflow. Every job runs the prebuilt
-# dist/fjgl-0.3.0.jar (which already contains DowncallJniBench and its JMH harness) against the
-# platform native jar, collects the machine environment and uploads a JSON result file.
+# Every job runs the prebuilt dist/fjgl-0.3.0.jar (which already contains DowncallJniBench and its
+# JMH harness) against the platform native jar, collects the machine environment and uploads the
+# result files.
 #
 # Note: GitHub-hosted jobs are hard-capped at 6 hours. With the defaults below a full run of all
-# 2030 benchmarks takes roughly 3 hours per platform, so it fits. If you raise the iteration count
+# 2030 benchmarks takes roughly 3-4 hours per platform, so it fits. If you raise the iteration count
 # or forks, split the run by passing a narrower "filter" (e.g. only 0-1 parameter signatures).
 
 on:
+  # Manual run: Actions -> jni-vs-ffm-bench -> Run workflow. The inputs here override the defaults.
   workflow_dispatch:
     inputs:
       filter:
@@ -65,6 +66,23 @@ on:
 permissions:
   contents: read
 
+# Defaults used when the workflow is not started via workflow_dispatch (e.g. push) or when an input
+# is left empty. Keep these in sync with the workflow_dispatch defaults above.
+env:
+  DEF_FILTER: '.*DowncallJniBench.*'
+  DEF_WARMUP_ITERATIONS: '30'
+  DEF_WARMUP_TIME: '100ms'
+  DEF_MEASUREMENT_ITERATIONS: '5'
+  DEF_MEASUREMENT_TIME: '500ms'
+  DEF_FORKS: '1'
+  DEF_THREADS: '1'
+  DEF_JVM_ARGS: >-
+    --enable-native-access=ALL-UNNAMED
+    --add-exports=java.base/jdk.internal.access=ALL-UNNAMED
+    --add-exports=java.base/jdk.internal.foreign=ALL-UNNAMED
+    --add-exports=java.base/jdk.internal.misc=ALL-UNNAMED
+    --add-exports=java.base/jdk.internal.util=ALL-UNNAMED
+
 jobs:
   bench:
     name: ${{ matrix.platform }}-${{ matrix.arch }}
@@ -116,21 +134,44 @@ jobs:
         shell: bash
         env:
           SEP: ${{ matrix.sep }}
+          IN_FILTER: ${{ github.event.inputs.filter }}
+          IN_WARMUP_ITERATIONS: ${{ github.event.inputs.warmupIterations }}
+          IN_WARMUP_TIME: ${{ github.event.inputs.warmupTime }}
+          IN_MEASUREMENT_ITERATIONS: ${{ github.event.inputs.measurementIterations }}
+          IN_MEASUREMENT_TIME: ${{ github.event.inputs.measurementTime }}
+          IN_FORKS: ${{ github.event.inputs.forks }}
+          IN_THREADS: ${{ github.event.inputs.threads }}
+          IN_JVM_ARGS: ${{ github.event.inputs.jvmArgs }}
         run: |
+          FILTER="${IN_FILTER:-$DEF_FILTER}"
+          WI="${IN_WARMUP_ITERATIONS:-$DEF_WARMUP_ITERATIONS}"
+          WT="${IN_WARMUP_TIME:-$DEF_WARMUP_TIME}"
+          MI="${IN_MEASUREMENT_ITERATIONS:-$DEF_MEASUREMENT_ITERATIONS}"
+          MT="${IN_MEASUREMENT_TIME:-$DEF_MEASUREMENT_TIME}"
+          FK="${IN_FORKS:-$DEF_FORKS}"
+          TH="${IN_THREADS:-$DEF_THREADS}"
+          JVM="${IN_JVM_ARGS:-$DEF_JVM_ARGS}"
+
           CP="dist/fjgl-0.3.0.jar${SEP}dist/${{ matrix.native }}${SEP}libs/*"
-          echo "classpath: $CP"
-          java ${{ inputs.jvmArgs }} -cp "$CP" org.openjdk.jmh.Main \
-            '${{ inputs.filter }}' \
-            -wi ${{ inputs.warmupIterations }} \
-            -i ${{ inputs.measurementIterations }} \
-            -w ${{ inputs.warmupTime }} \
-            -r ${{ inputs.measurementTime }} \
-            -f ${{ inputs.forks }} \
-            -t ${{ inputs.threads }} \
+          echo "classpath:        $CP"
+          echo "filter:           $FILTER"
+          echo "warmup:           $WI x $WT"
+          echo "measurement:      $MI x $MT"
+          echo "forks/threads:    $FK / $TH"
+          echo "jvmArgs:          $JVM"
+
+          java $JVM -cp "$CP" org.openjdk.jmh.Main \
+            "$FILTER" \
+            -wi "$WI" \
+            -i "$MI" \
+            -w "$WT" \
+            -r "$MT" \
+            -f "$FK" \
+            -t "$TH" \
             -tu ns \
             -rf json \
             -rff "out/jmh-${{ matrix.platform }}-${{ matrix.arch }}.json" \
-            -jvmArgsAppend "${{ inputs.jvmArgs }}"
+            -jvmArgsAppend "$JVM"
 
       - name: Flatten to CSV
         if: always()
