@@ -49,6 +49,19 @@ on:
           --add-exports=java.base/jdk.internal.misc=ALL-UNNAMED
           --add-exports=java.base/jdk.internal.util=ALL-UNNAMED
 
+  # Automatic run on every push to main that touches the harness.
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/bench.yml'
+      - 'dist/**'
+      - 'libs/**'
+      - 'tools/**'
+
+  # Automatic weekly run (uncomment to enable).
+  # schedule:
+  #   - cron: '0 3 * * 0'
+
 permissions:
   contents: read
 
