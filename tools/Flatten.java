@@ -21,7 +21,7 @@ public final class Flatten {
     private static final String[] PERCENTILES = {"0.0", "25.0", "50.0", "75.0", "90.0", "95.0", "99.0", "99.9", "99.99", "100.0"};
 
     private static final String[] HEADER = {
-        "platform", "arch", "osName", "osVersion", "jdk", "vmName", "cpuModel", "ramBytes",
+        "tag", "platform", "arch", "osName", "osVersion", "jdk", "vmName", "cpuModel", "ramBytes",
         "backend", "signature", "ret", "params",
         "score", "error", "unit",
         "p0", "p25", "p50", "p75", "p90", "p95", "p99", "p99_9", "p99_99", "p100",
@@ -34,6 +34,7 @@ public final class Flatten {
         Path jmhFile = Path.of(args[1]);
         Path outFile = Path.of(args[2]);
         Path callsFile = args.length > 3 ? Path.of(args[3]) : null;
+        String tag = args.length > 4 ? args[4] : "";
 
         Map<String, Object> env = (Map<String, Object>)Json.parse(Files.readString(envFile, StandardCharsets.UTF_8));
         List<Object> results = (List<Object>)Json.parse(Files.readString(jmhFile, StandardCharsets.UTF_8));
@@ -86,6 +87,7 @@ public final class Flatten {
             callsValues.add(values);
 
             var row = new ArrayList<String>(HEADER.length);
+            row.add(tag);
             row.add(platform);
             row.add(arch);
             row.add(osName);

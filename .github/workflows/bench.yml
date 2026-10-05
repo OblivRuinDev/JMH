@@ -1,38 +1,35 @@
 name: jni-vs-ffm-bench
 
-# Every job runs the prebuilt dist/fjgl-0.3.0.jar (which already contains DowncallJniBench and its
-# JMH harness) against the platform native jar, collects the machine environment and uploads the
-# result files.
+# One job per (platform, arch, chunk). Chunks are selected by SIGNATURE (the cType) via tools/RunChunk,
+# so the ffm_<sig> and jni_<sig> benchmarks always run on the same machine -- the ffm/jni comparison
+# never crosses machines.
 #
-# Note: GitHub-hosted jobs are hard-capped at 6 hours. With the defaults below (30x100ms warmup,
-# 50x100ms measurement, 1 fork => 50 raw samples per benchmark) a full run of all 2030 benchmarks
-# takes roughly 5 hours per platform. To collect more samples or use multiple forks, split the run
-# by passing a narrower "filter" and run the workflow several times.
+# Per-platform settings (warmup/measurement) are in the matrix:
+#   linux   : warmup 30x50ms  , measure 10x100ms
+#   windows : warmup 30x50ms  , measure 20x100ms
+#   macos   : warmup 30x100ms , measure 10x100ms , split into 2 chunks (2 jobs each, in parallel)
+#
+# GitHub-hosted jobs are hard-capped at 6h; every job below is comfortably under that.
 
 on:
-  # Manual run: Actions -> jni-vs-ffm-bench -> Run workflow. The inputs here override the defaults.
   workflow_dispatch:
     inputs:
-      filter:
-        description: JMH benchmark regex
-        required: false
-        default: '.*DowncallJniBench.*'
       warmupIterations:
-        description: Warmup iterations
+        description: Override warmup iterations (all platforms)
         required: false
-        default: '30'
+        default: ''
       warmupTime:
-        description: Warmup time per iteration
+        description: Override warmup time per iteration (all platforms)
         required: false
-        default: '100ms'
+        default: ''
       measurementIterations:
-        description: Measurement iterations
+        description: Override measurement iterations (all platforms)
         required: false
-        default: '50'
+        default: ''
       measurementTime:
-        description: Measurement time per iteration
+        description: Override measurement time per iteration (all platforms)
         required: false
-        default: '100ms'
+        default: ''
       forks:
         description: Forks
         required: false
@@ -41,17 +38,7 @@ on:
         description: Threads
         required: false
         default: '1'
-      jvmArgs:
-        description: JVM arguments forwarded to the driver and to every fork
-        required: false
-        default: >-
-          --enable-native-access=ALL-UNNAMED
-          --add-exports=java.base/jdk.internal.access=ALL-UNNAMED
-          --add-exports=java.base/jdk.internal.foreign=ALL-UNNAMED
-          --add-exports=java.base/jdk.internal.misc=ALL-UNNAMED
-          --add-exports=java.base/jdk.internal.util=ALL-UNNAMED
 
-  # Automatic run on every push to main that touches the harness.
   push:
     branches: [main]
     paths:
@@ -60,21 +47,10 @@ on:
       - 'libs/**'
       - 'tools/**'
 
-  # Automatic weekly run (uncomment to enable).
-  # schedule:
-  #   - cron: '0 3 * * 0'
-
 permissions:
   contents: read
 
-# Defaults used when the workflow is not started via workflow_dispatch (e.g. push) or when an input
-# is left empty. Keep these in sync with the workflow_dispatch defaults above.
 env:
-  DEF_FILTER: '.*DowncallJniBench.*'
-  DEF_WARMUP_ITERATIONS: '30'
-  DEF_WARMUP_TIME: '100ms'
-  DEF_MEASUREMENT_ITERATIONS: '50'
-  DEF_MEASUREMENT_TIME: '100ms'
   DEF_FORKS: '1'
   DEF_THREADS: '1'
   DEF_JVM_ARGS: >-
@@ -86,21 +62,22 @@ env:
 
 jobs:
   bench:
-    name: ${{ matrix.platform }}-${{ matrix.arch }}
+    name: ${{ matrix.platform }}-${{ matrix.arch }}-c${{ matrix.chunk }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 350
     strategy:
       fail-fast: false
       matrix:
         include:
-          # Native jar name must match a file committed under dist/
-          # Temurin has no JDK 25 for Windows arm64, so that one uses the Microsoft build.
-          - { os: ubuntu-latest,    platform: linux,   arch: x64,   jar: fjgl-0.3.0-natives-linux.jar,         sep: ':', distribution: temurin }
-          - { os: ubuntu-24.04-arm, platform: linux,   arch: arm64, jar: fjgl-0.3.0-natives-linux-arm64.jar,   sep: ':', distribution: temurin }
-          - { os: windows-latest,   platform: windows, arch: x64,   jar: fjgl-0.3.0-natives-windows.jar,       sep: ';', distribution: temurin }
-          - { os: windows-11-arm,   platform: windows, arch: arm64, jar: fjgl-0.3.0-natives-windows-arm64.jar, sep: ';', distribution: microsoft }
-          - { os: macos-15-intel,   platform: macos,   arch: x64,   jar: fjgl-0.3.0-natives-macos.jar,         sep: ':', distribution: temurin }
-          - { os: macos-14,         platform: macos,   arch: arm64, jar: fjgl-0.3.0-natives-macos-arm64.jar,   sep: ':', distribution: temurin }
+          # jar = platform native jar under dist/ ; mi = measurement iterations ; wt = warmup time ; chunks = split count
+          - { os: ubuntu-latest,    platform: linux,   arch: x64,   chunk: 0, chunks: 1, wi: 30, wt: 50ms,  mi: 10, jar: fjgl-0.3.0-natives-linux.jar,         sep: ':', distribution: temurin }
+          - { os: ubuntu-24.04-arm, platform: linux,   arch: arm64, chunk: 0, chunks: 1, wi: 30, wt: 50ms,  mi: 10, jar: fjgl-0.3.0-natives-linux-arm64.jar,   sep: ':', distribution: temurin }
+          - { os: windows-latest,   platform: windows, arch: x64,   chunk: 0, chunks: 1, wi: 30, wt: 50ms,  mi: 20, jar: fjgl-0.3.0-natives-windows.jar,       sep: ';', distribution: temurin }
+          - { os: windows-11-arm,   platform: windows, arch: arm64, chunk: 0, chunks: 1, wi: 30, wt: 50ms,  mi: 20, jar: fjgl-0.3.0-natives-windows-arm64.jar, sep: ';', distribution: microsoft }
+          - { os: macos-15-intel,   platform: macos,   arch: x64,   chunk: 0, chunks: 2, wi: 30, wt: 100ms, mi: 10, jar: fjgl-0.3.0-natives-macos.jar,         sep: ':', distribution: temurin }
+          - { os: macos-15-intel,   platform: macos,   arch: x64,   chunk: 1, chunks: 2, wi: 30, wt: 100ms, mi: 10, jar: fjgl-0.3.0-natives-macos.jar,         sep: ':', distribution: temurin }
+          - { os: macos-14,         platform: macos,   arch: arm64, chunk: 0, chunks: 2, wi: 30, wt: 100ms, mi: 10, jar: fjgl-0.3.0-natives-macos-arm64.jar,   sep: ':', distribution: temurin }
+          - { os: macos-14,         platform: macos,   arch: arm64, chunk: 1, chunks: 2, wi: 30, wt: 100ms, mi: 10, jar: fjgl-0.3.0-natives-macos-arm64.jar,   sep: ':', distribution: temurin }
     steps:
       - uses: actions/checkout@v4
 
@@ -111,87 +88,63 @@ jobs:
 
       - name: Compile tools
         shell: bash
-        run: javac -d tools/classes tools/EnvInfo.java tools/Flatten.java
+        run: javac -cp libs/jmh-core.jar -d tools/classes tools/EnvInfo.java tools/Flatten.java tools/RunChunk.java
 
       - name: Collect environment
         shell: bash
         run: |
           mkdir -p out
-          java -cp tools/classes EnvInfo "out/env-${{ matrix.platform }}-${{ matrix.arch }}.json"
+          java -cp tools/classes EnvInfo "out/env-${{ matrix.platform }}-${{ matrix.arch }}-c${{ matrix.chunk }}.json"
 
       - name: Print environment
         shell: bash
         run: |
-          ENV="out/env-${{ matrix.platform }}-${{ matrix.arch }}.json"
-          echo "--- $ENV ---"
-          cat "$ENV"
+          ENV="out/env-${{ matrix.platform }}-${{ matrix.arch }}-c${{ matrix.chunk }}.json"
+          echo "--- $ENV ---"; cat "$ENV"
           {
-            echo "### Environment ${{ matrix.platform }}-${{ matrix.arch }}"
-            echo '```json'
-            cat "$ENV"
-            echo '```'
+            echo "### ${{ matrix.platform }}-${{ matrix.arch }}-c${{ matrix.chunk }}"
+            echo '```json'; cat "$ENV"; echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 
-      - name: Run JMH
+      - name: Run JMH chunk
         shell: bash
         env:
           SEP: ${{ matrix.sep }}
-          IN_FILTER: ${{ github.event.inputs.filter }}
-          IN_WARMUP_ITERATIONS: ${{ github.event.inputs.warmupIterations }}
-          IN_WARMUP_TIME: ${{ github.event.inputs.warmupTime }}
-          IN_MEASUREMENT_ITERATIONS: ${{ github.event.inputs.measurementIterations }}
-          IN_MEASUREMENT_TIME: ${{ github.event.inputs.measurementTime }}
-          IN_FORKS: ${{ github.event.inputs.forks }}
-          IN_THREADS: ${{ github.event.inputs.threads }}
-          IN_JVM_ARGS: ${{ github.event.inputs.jvmArgs }}
+          IN_WI: ${{ github.event.inputs.warmupIterations }}
+          IN_WT: ${{ github.event.inputs.warmupTime }}
+          IN_MI: ${{ github.event.inputs.measurementIterations }}
+          IN_MT: ${{ github.event.inputs.measurementTime }}
+          IN_FK: ${{ github.event.inputs.forks }}
+          IN_TH: ${{ github.event.inputs.threads }}
         run: |
-          FILTER="${IN_FILTER:-$DEF_FILTER}"
-          WI="${IN_WARMUP_ITERATIONS:-$DEF_WARMUP_ITERATIONS}"
-          WT="${IN_WARMUP_TIME:-$DEF_WARMUP_TIME}"
-          MI="${IN_MEASUREMENT_ITERATIONS:-$DEF_MEASUREMENT_ITERATIONS}"
-          MT="${IN_MEASUREMENT_TIME:-$DEF_MEASUREMENT_TIME}"
-          FK="${IN_FORKS:-$DEF_FORKS}"
-          TH="${IN_THREADS:-$DEF_THREADS}"
-          JVM="${IN_JVM_ARGS:-$DEF_JVM_ARGS}"
-
-          CP="dist/fjgl-0.3.0.jar${SEP}dist/${{ matrix.jar }}${SEP}libs/*"
-          echo "classpath:        $CP"
-          echo "filter:           $FILTER"
-          echo "warmup:           $WI x $WT"
-          echo "measurement:      $MI x $MT"
-          echo "forks/threads:    $FK / $TH"
-          echo "jvmArgs:          $JVM"
-
-          java $JVM -cp "$CP" org.openjdk.jmh.Main \
-            "$FILTER" \
-            -wi "$WI" \
-            -i "$MI" \
-            -w "$WT" \
-            -r "$MT" \
-            -f "$FK" \
-            -t "$TH" \
-            -bm avgt \
-            -tu ns \
-            -rf json \
-            -rff "out/jmh-${{ matrix.platform }}-${{ matrix.arch }}.json" \
-            -jvmArgsAppend "$JVM"
+          WI="${IN_WI:-${{ matrix.wi }}}"
+          WT="${IN_WT:-${{ matrix.wt }}}"
+          MI="${IN_MI:-${{ matrix.mi }}}"
+          MT="${IN_MT:-100ms}"
+          FK="${IN_FK:-$DEF_FORKS}"
+          TH="${IN_TH:-$DEF_THREADS}"
+          TAG="${{ matrix.platform }}-${{ matrix.arch }}-c${{ matrix.chunk }}"
+          CP="tools/classes${SEP}dist/fjgl-0.3.0.jar${SEP}dist/${{ matrix.jar }}${SEP}libs/*"
+          echo "chunk=${{ matrix.chunk }}/${{ matrix.chunks }}  warmup=$WI x $WT  measure=$MI x $MT  forks=$FK threads=$TH"
+          java $DEF_JVM_ARGS -cp "$CP" RunChunk ${{ matrix.chunk }} ${{ matrix.chunks }} \
+            -wi "$WI" -w "$WT" -i "$MI" -r "$MT" -f "$FK" -t "$TH" \
+            -bm avgt -tu ns \
+            -rf json -rff "out/jmh-$TAG.json" \
+            -jvmArgsAppend "$DEF_JVM_ARGS"
 
       - name: Flatten to CSV
         if: always()
         shell: bash
         run: |
-          if [ -f "out/jmh-${{ matrix.platform }}-${{ matrix.arch }}.json" ]; then
-            java -cp tools/classes Flatten \
-              "out/env-${{ matrix.platform }}-${{ matrix.arch }}.json" \
-              "out/jmh-${{ matrix.platform }}-${{ matrix.arch }}.json" \
-              "out/results-${{ matrix.platform }}-${{ matrix.arch }}.csv" \
-              "out/calls-${{ matrix.platform }}-${{ matrix.arch }}.csv"
+          TAG="${{ matrix.platform }}-${{ matrix.arch }}-c${{ matrix.chunk }}"
+          if [ -f "out/jmh-$TAG.json" ]; then
+            java -cp tools/classes Flatten "out/env-$TAG.json" "out/jmh-$TAG.json" "out/results-$TAG.csv" "out/calls-$TAG.csv" "$TAG"
           fi
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: results-${{ matrix.platform }}-${{ matrix.arch }}
+          name: results-${{ matrix.platform }}-${{ matrix.arch }}-c${{ matrix.chunk }}
           path: out/
           if-no-files-found: warn
 
@@ -215,10 +168,7 @@ jobs:
           ls -la merged || true
           shopt -s nullglob
           files=(merged/results-*.csv)
-          if [ ${#files[@]} -eq 0 ]; then
-            echo "no result CSVs found"
-            exit 0
-          fi
+          if [ ${#files[@]} -eq 0 ]; then echo "no result CSVs"; exit 0; fi
           head -1 "${files[0]}" > results-all.csv
           for f in "${files[@]}"; do tail -n +2 "$f" >> results-all.csv; done
           wc -l results-all.csv

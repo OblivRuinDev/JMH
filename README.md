@@ -70,24 +70,23 @@ java -cp tools/classes Flatten out/env-linux-x64.json out/jmh-linux-x64.json out
 
 ## Run on GitHub Actions
 
-`Actions → jni-vs-ffm-bench → Run workflow`. It runs the matrix
+`Actions → jni-vs-ffm-bench → Run workflow`. One job per (platform, arch, chunk); the chunk is selected by **signature**, so a signature's `ffm_*` and `jni_*` always run on the same machine (`tools/RunChunk`).
 
-| runner | platform | arch |
-|---|---|---|
-| `ubuntu-latest` | linux | x64 |
-| `ubuntu-24.04-arm` | linux | arm64 |
-| `windows-latest` | windows | x64 |
-| `windows-11-arm` | windows | arm64 |
-| `macos-15-intel` | macos | x64 |
-| `macos-14` | macos | arm64 |
+| runner | platform | arch | warmup | measurement | chunks |
+|---|---|---|---|---|---|
+| `ubuntu-latest` | linux | x64 | 30×50ms | 10×100ms | 1 |
+| `ubuntu-24.04-arm` | linux | arm64 | 30×50ms | 10×100ms | 1 |
+| `windows-latest` | windows | x64 | 30×50ms | 20×100ms | 1 |
+| `windows-11-arm` | windows | arm64 | 30×50ms | 20×100ms | 1 |
+| `macos-15-intel` | macos | x64 | 30×100ms | 10×100ms | 2 |
+| `macos-14` | macos | arm64 | 30×100ms | 10×100ms | 2 |
 
-Each job uploads `env-*.json`, `jmh-*.json` and `results-*.csv`; the `merge` job concatenates all
-CSVs into `results-all.csv`. Only GitHub-hosted machines are used (no QEMU), so timings are real.
+Each job uploads `env-*`, `jmh-*`, `results-*`, `calls-*` (names end with `-c<chunk>`); the `merge` job
+concatenates all `results-*.csv` into `results-all.csv`. Only GitHub-hosted machines are used.
 
-> GitHub-hosted jobs are hard-capped at **6 hours**. The defaults collect **50 samples** per
-> benchmark (`50 measurement iterations × 1 fork`) and finish in roughly 5h per platform. To get more
-> samples or multiple forks inside the cap, split the 2030 benchmarks across several runs with
-> `filter` (e.g. `.*_(jni|ffm)_V.*`, `.*_(jni|ffm)_P.*`, …) and combine the CSVs afterwards.
+> GitHub-hosted jobs are hard-capped at **6 hours**. macOS is far slower per benchmark (its per-benchmark
+> JVM fork dominates), so it is split into 2 signature-partitioned chunks (2 jobs in parallel, ~3–4h each).
+> linux/windows jobs are ~1.6–2.3h.
 
 ## Data format
 
